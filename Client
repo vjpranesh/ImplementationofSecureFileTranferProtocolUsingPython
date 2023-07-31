@@ -1,0 +1,91 @@
+# This program is to try a connect to server
+
+#   and request are send to server and receives
+
+#   responses from server
+
+
+
+import os
+
+import paramiko
+
+from paramiko import *
+
+
+
+
+
+class paramiko_sftp_client(paramiko.SFTPClient):
+
+    def cwd(self, path):
+
+        self.chdir(path)
+
+
+
+    def go_to_home(self, username):
+
+        try:
+
+            self.cmd('/ServerFolder/'+username)
+
+        except:
+
+            self.cwd('/ServerFolder')
+
+
+
+
+
+class sftp_controller:
+
+    def __init__(self):
+
+        pass
+
+
+
+    def connect_to(self, Host, Username='', Password='', KeyFile='', Port=22):
+
+        self.ssh = paramiko.SSHClient()
+
+        self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+        if(Password == ''):
+
+            self.ssh.connect(hostname=Host, username=Username,
+
+                             key_filename=r''+KeyFile)
+
+        else:
+
+            self.ssh.connect(hostname=Host, username=Username,
+
+                             password=Password, allow_agent=False, look_for_keys=False)
+
+        sftp = self.ssh.open_sftp()
+
+        sftp.chdir("\\ServerFolder")
+
+        return sftp
+
+
+
+    def get_list_file(self, sftp):
+
+        file = sftp.listdir()
+
+        return file
+
+
+
+    def upload_file(self, sftp, localpath, filename):
+
+        sftp.put(localpath+filename, filename)
+
+
+
+    def download_file(self, sftp, remotepath, filename):
+
+        sftp.get(filename, remotepath+filename
