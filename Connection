@@ -1,0 +1,333 @@
+import os
+
+import threading
+
+import time
+
+
+
+from tkinter import *
+
+from SFTPConnection import *
+
+from tkinter import filedialog
+
+
+
+
+
+class Client:
+
+    def __init__(self):
+
+        self.sftpcontroller = sftp_controller()
+
+        self.window = Tk()
+
+        self._setup_main_window()
+
+
+
+    def run(self):
+
+        self.window.mainloop()
+
+
+
+    def _setup_main_window(self):
+
+        self.window.geometry("800x550")
+
+        self.window.title("Maxwell SFTP Client")
+
+        self.window.configure(bg="#ffffff")
+
+        self.window.resizable(False, False)
+
+        icon = PhotoImage(file=f"Logo.png")
+
+        self.window.iconphoto(False, icon)
+
+
+
+        # Create Canvas
+
+        self.canvas = Canvas(self.window, bg="#ffffff", height=550,
+
+                             width=800, bd=0, highlightthickness=0, relief="ridge")
+
+        self.canvas.place(x=0, y=0)
+
+
+
+        # Background Image
+
+        self.background_img = PhotoImage(file=f"background.png")
+
+        self.background = self.canvas.create_image(
+
+            338.0, 276.0, image=self.background_img)
+
+
+
+        # Entry Hostname or HostID
+
+        self.entry0_img = PhotoImage(file=f"img_textBox0.png")
+
+        self.entry0_bg = self.canvas.create_image(
+
+            610.5, 149.5, image=self.entry0_img)
+
+        self.entry0 = Entry(bd=0, bg="#dad6d6", highlightthickness=0)
+
+        self.entry0.place(x=500.5, y=136, width=220.0, height=25)
+
+
+
+        # Entry Username
+
+        self.entry1_img = PhotoImage(file=f"img_textBox0.png")
+
+        self.entry1_bg = self.canvas.create_image(
+
+            610.5, 222.5, image=self.entry1_img)
+
+        self.entry1 = Entry(bd=0, bg="#dad6d6", highlightthickness=0)
+
+        self.entry1.place(x=500.5, y=209, width=220.0, height=25)
+
+
+
+        # Entry Password
+
+        self.entry2_img = PhotoImage(file=f"img_textBox0.png")
+
+        self.entry2_bg = self.canvas.create_image(
+
+            610.5, 295.5, image=self.entry2_img)
+
+        self.entry2 = Entry(show="*", bd=0, bg="#dad6d6", highlightthickness=0)
+
+        self.entry2.place(x=500.5, y=282, width=220.0, height=25)
+
+
+
+        # Entry Key File Path
+
+        self.entry3_img = PhotoImage(file=f"img_textBox0.png")
+
+        self.entry3_bg = self.canvas.create_image(
+
+            610.5, 368.5, image=self.entry3_img)
+
+        self.entry3 = Entry(bd=0, bg="#dad6d6", highlightthickness=0)
+
+        self.entry3.place(x=500.5, y=355, width=220.0, height=25)
+
+        self.entry3.bind('<Return>', self.browsefunc)
+
+
+
+        self.img0 = PhotoImage(file=f"img0.png")
+
+        self.b0 = Button(image=self.img0, borderwidth=0, highlightthickness=0,
+
+                         command=self.connect_to_sftp, relief="flat")
+
+        self.b0.place(x=539, y=421, width=125, height=55)
+
+
+
+    def browsefunc(self, event):
+
+        currdir = os.getcwd()
+
+        temdir = filedialog.askopenfilename(
+
+            parent=self.window, initialdir=currdir, title='Please select a Key File')
+
+        self.entry3.insert(END, temdir)
+
+
+
+    def _setup_Connected_window(self):
+
+        # Destroy Previous Widgets
+
+        self.canvas.delete('all')
+
+        self.entry0.destroy()
+
+        self.entry1.destroy()
+
+        self.entry2.destroy()
+
+        self.b0.destroy()
+
+
+
+        # Create Canvas
+
+        self.canvas = Canvas(self.window, bg="#ffffff", height=550, width=800,
+
+                             bd=0, highlightthickness=0, relief="ridge")
+
+        self.canvas.place(x=0, y=0)
+
+
+
+        # Background Image
+
+        self.background_img = PhotoImage(file=f"background2.png")
+
+        self.background = self.canvas.create_image(
+
+            400.0, 275.0, image=self.background_img)
+
+
+
+        # Button Widget (Upload)
+
+        self.img1 = PhotoImage(file=f"img1.png")
+
+        self.b1 = Button(image=self.img1, borderwidth=0, highlightthickness=0,
+
+                         command=self.upload_file, relief="flat")
+
+        self.b1.place(x=38, y=459, width=162, height=49)
+
+
+
+        # Button Widget (Download)
+
+        self.img2 = PhotoImage(file=f"img2.png")
+
+        self.b2 = Button(image=self.img2, borderwidth=0, highlightthickness=0,
+
+                         command=self.download_file, relief="flat")
+
+        self.b2.place(x=600, y=459, width=162, height=49)
+
+
+
+        # List Box (Local File List)
+
+        self.Lb1 = Listbox(self.window, bg='#E1DEDE', selectmode=SINGLE)
+
+        self.Lb1.place(x=38, y=83, width=321, height=321)
+
+        for file in self.local_files:
+
+            self.Lb1.insert(END, file)
+
+
+
+        # List Box (Remote File List)
+
+        self.Lb2 = Listbox(self.window, bg='#E1DEDE', selectmode=SINGLE)
+
+        self.Lb2.place(x=439, y=83, width=321, height=321)
+
+        for file in self.remote_files:
+
+            self.Lb2.insert(END, file)
+
+
+
+    def connect_to_sftp(self):
+
+        try:
+
+            self.sftpcontroller.disconnect()
+
+            del self.sftpcontroller
+
+        except:
+
+            pass
+
+        self.thread = threading.Thread(target=self.connect_thread, args=(
+
+            self.sftpcontroller, self.entry0.get(), self.entry1.get(), self.entry2.get(), self.entry3.get()))
+
+        self.thread.daemon = True
+
+        self.thread.start()
+
+        time.sleep(1)
+
+        self._setup_Connected_window()
+
+
+
+    def connect_thread(self, sftpcontroller, Hostname, Username, Password, KeyFile):
+
+        self.sftp = sftpcontroller.connect_to(
+
+            Hostname, Username, Password, KeyFile)
+
+        self.update_remote_file_list(self.sftp)
+
+        self.update_local_file_list()
+
+
+
+    def update_remote_file_list(self, sftp):
+
+        self.remote_files = self.sftpcontroller.get_list_file(sftp)
+
+
+
+    def update_local_file_list(self):
+
+        self.local_files = []
+
+        with os.scandir(os.getcwd()+"\\ClientFolder") as listofEntries:
+
+            for entry in listofEntries:
+
+                if entry.is_file():
+
+                    self.local_files.append(entry.name)
+
+
+
+    def upload_file(self):
+
+        self.sftpcontroller.upload_file(self.sftp,
+
+                                        os.getcwd()+"\\ClientFolder\\", self.Lb1.get(self.Lb1.curselection()[0]))
+
+        self.update_remote_file_list(self.sftp)
+
+        self.Lb2.delete(0, END)
+
+        for file in self.remote_files:
+
+            self.Lb2.insert(END, file)
+
+
+
+    def download_file(self):
+
+        self.sftpcontroller.download_file(self.sftp,
+
+                                          os.getcwd()+"\\ClientFolder\\", self.Lb2.get(self.Lb2.curselection()[0]))
+
+        self.update_local_file_list()
+
+        self.Lb1.delete(0, END)
+
+        for file in self.local_files:
+
+            self.Lb1.insert(END, file)
+
+
+
+
+
+if __name__ == '__main__':
+
+    C = Client()
+
+    C.run(
